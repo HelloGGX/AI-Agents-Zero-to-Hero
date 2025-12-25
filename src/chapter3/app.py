@@ -126,6 +126,16 @@ class LLMService:
         return "".join(full_content)
 
 
+class BaseAgent(ABC):
+    def __init__(self, llm_service: LLMService):
+        self.llm = llm_service
+
+    # 子类必须实现的统一接口
+    @abstractmethod
+    def process_task(self, message: McpMessage) -> McpMessage:
+        pass
+
+
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 spec = ServerlessSpec(cloud="aws", region="us-east-1")
 
@@ -288,7 +298,14 @@ def get_embeddings_batch(texts, model="Qwen/Qwen3-Embedding-8B"):
     texts = [t.replace("\n", " ") for t in texts]
     config = AppConfig()
     llm = LLMService(config)
-    response = llm.client.embeddings.create(input=texts, model=model, dimensions=1536)
+    dimensions_str = os.getenv("EMBEDDING_DIM")
+    if dimensions_str is None:
+        raise ValueError("EMBEDDING_DIM environment variable is not set.")
+
+    dimensions = int(dimensions_str)
+    response = llm.client.embeddings.create(
+        input=texts, model=model, dimensions=dimensions
+    )
     return [item.embedding for item in response.data]
 
 
@@ -343,3 +360,52 @@ for i in tqdm(range(0, len(knowledge_chunks), batch_size)):
     index.upsert(vectors=batch_vectors, namespace=os.getenv("NAMESPACE_KNOWLEDGE"))
 
 print(f"Successfully uploaded {len(knowledge_chunks)} knowledge vectors.")
+
+
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
+def get_embedding(text):
+    """Generates embeddings for a single text query with retries."""
+    text = text.replace("\n", " ")
+    config = AppConfig()
+    llm = LLMService(config)
+    dimensions_str = os.getenv("EMBEDDING_DIM")
+    if dimensions_str is None:
+        raise ValueError("EMBEDDING_DIM environment variable is not set.")
+
+    dimensions = int(dimensions_str)
+    response = llm.client.embeddings.create(
+        input=[text], model="Qwen/Qwen3-Embedding-8B", dimensions=dimensions
+    )
+    return response.data[0].embedding
+
+
+def query_pinecone(query_text, namespace, top_k=1):
+    """Embeds the query text and searches the specified Pinecone namespace."""
+    try:
+        query_embedding = get_embedding(query_text)
+        response = index.query(
+            vector=query_embedding,
+            namespace=namespace,
+            top_k=top_k,
+            include_metadata=True,
+        )
+        return response["matches"]
+    except Exception as e:
+        print(f"Error querying Pinecone (Namespace: {namespace}): {e}")
+        return []
+
+
+class agent_context_librarian(BaseAgent):
+    def process_task(self, message: McpMessage) -> McpMessage:
+        print("上下文管理员激活")
+        data = json.loads(message.content)
+        requested_intent = data.get("intent_query", "")
+        results = query_pinecone(
+            requested_intent, os.getenv("NAMESPACE_CONTEXT"), top_k=1
+        )
+        if results:
+            match = results[0]
+            print(
+                f"上下文管理员找到蓝图了 '{match['id']}' (得分：{match['score']: .2f})"
+            )
+            blueprint_json = match["metadata"]["blueprint_json"]
