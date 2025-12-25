@@ -9,9 +9,11 @@ from typing import Dict, Any
 from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 import tiktoken
+from tenacity import retry, wait_random_exponential, stop_after_attempt
 
 # 引入必要的 OpenAI 异常类
 from openai import OpenAI, APIError, APIConnectionError, RateLimitError
+from tqdm import tqdm
 
 load_dotenv()
 # ==========================================
@@ -124,7 +126,6 @@ class LLMService:
         return "".join(full_content)
 
 
-print("xxxxxxxxx", os.getenv("PINECONE_API_KEY"))
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 spec = ServerlessSpec(cloud="aws", region="us-east-1")
 
@@ -258,11 +259,87 @@ tokenizer = tiktoken.get_encoding("cl100k_base")
 
 
 def chunk_text(text, chunk_size=400, overlap=50):
+    # 将原始字符串文本转换为模型可识别的令牌（token）序列
     tokens = tokenizer.encode(text)
     chunks = []
-    #令牌序列：0—100—200—300—350—400—500—600—700—750—800—900—1000
-    #第1片段：[0──────────────400)  （覆盖0-399令牌）
-    #第2片段：        [350──────────────750)  （覆盖350-749令牌，与第1片段重叠50个）
-    #第3片段：                [700──────────────1000)  （覆盖700-999令牌，与第2片段重叠50个）
+    # 令牌序列：0—100—200—300—350—400—500—600—700—750—800—900—1000
+    # 第1片段：[0──────────────400)  （覆盖0-399令牌）
+    # 第2片段：        [350──────────────750)  （覆盖350-749令牌，与第1片段重叠50个）
+    # 第3片段：                [700──────────────1000)  （覆盖700-999令牌，与第2片段重叠50个）
     for i in range(0, len(tokens), chunk_size - overlap):
-        
+        chunk_tokens = tokens[i : i + chunk_size]
+        # 将切分后的令牌子序列chunk_tokens（整数列表），反向转换为人类可阅读的字符串文本，这是tokenizer.encode()的逆操作。
+        chunk_text = tokenizer.decode(chunk_tokens)
+        chunk_text = chunk_text.replace("\n", " ").strip()
+        if chunk_text:
+            chunks.append(chunk_text)
+    return chunks
+
+
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
+def get_embeddings_batch(texts, model="Qwen/Qwen3-Embedding-8B"):
+    """Generates embeddings for a batch of texts using OpenAI, with retries."""
+    if model is None:
+        raise ValueError(
+            "模型名称不能为空！请配置环境变量EMBEDDING_MODEL，或手动传入有效嵌入模型名称（如text-embedding-3-small）"
+        )
+
+    # OpenAI expects the input texts to have newlines replaced by spaces
+    texts = [t.replace("\n", " ") for t in texts]
+    config = AppConfig()
+    llm = LLMService(config)
+    response = llm.client.embeddings.create(input=texts, model=model, dimensions=1536)
+    return [item.embedding for item in response.data]
+
+
+vectors_context = []
+for item in tqdm(context_blueprints):
+    embedding = get_embeddings_batch([item["description"]])[0]
+    vectors_context.append(
+        {
+            "id": item["id"],
+            "values": embedding,
+            "metadata": {
+                "description": item["description"],
+                # The blueprint itself (JSON string) is stored as metadata
+                "blueprint_json": item["blueprint"],
+            },
+        }
+    )
+
+# Upsert data
+if vectors_context:
+    index.upsert(vectors=vectors_context, namespace=os.getenv("NAMESPACE_CONTEXT"))
+    print(f"Successfully uploaded {len(vectors_context)} context vectors.")
+
+# --- 6.2. Knowledge Base ---
+print(
+    f"\nProcessing and uploading Knowledge Base to namespace: {os.getenv("NAMESPACE_KNOWLEDGE")}"
+)
+
+# --- 6.2. Knowledge Base ---
+print(
+    f"\nProcessing and uploading Knowledge Base to namespace: {os.getenv("NAMESPACE_KNOWLEDGE")}"
+)
+
+# Chunk the knowledge data
+knowledge_chunks = chunk_text(knowledge_data_raw)
+print(f"Created {len(knowledge_chunks)} knowledge chunks.")
+
+vectors_knowledge = []
+batch_size = 100  # Process in batches
+
+for i in tqdm(range(0, len(knowledge_chunks), batch_size)):
+    batch_texts = knowledge_chunks[i : i + batch_size]
+    batch_embeddings = get_embeddings_batch(batch_texts)
+
+    batch_vectors = []
+    for j, embedding in enumerate(batch_embeddings):
+        chunk_id = f"knowledge_chunk_{i+j}"
+        batch_vectors.append(
+            {"id": chunk_id, "values": embedding, "metadata": {"text": batch_texts[j]}}
+        )
+    # Upsert the batch
+    index.upsert(vectors=batch_vectors, namespace=os.getenv("NAMESPACE_KNOWLEDGE"))
+
+print(f"Successfully uploaded {len(knowledge_chunks)} knowledge vectors.")
