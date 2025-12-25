@@ -48,7 +48,7 @@ class AppConfig:
 @dataclass
 class McpMessage:
     sender: str
-    content: str
+    content: str | Dict[str, Any]
     metadata: Dict[str, Any] = field(default_factory=dict)
     protocol_version: str = "1.0"
 
@@ -398,7 +398,10 @@ def query_pinecone(query_text, namespace, top_k=1):
 class agent_context_librarian(BaseAgent):
     def process_task(self, message: McpMessage) -> McpMessage:
         print("上下文管理员激活")
-        data = json.loads(message.content)
+        if isinstance(message.content, str):
+            data = json.loads(message.content)
+        else:
+            data = message.content
         requested_intent = data.get("intent_query", "")
         results = query_pinecone(
             requested_intent, os.getenv("NAMESPACE_CONTEXT"), top_k=1
@@ -409,3 +412,13 @@ class agent_context_librarian(BaseAgent):
                 f"上下文管理员找到蓝图了 '{match['id']}' (得分：{match['score']: .2f})"
             )
             blueprint_json = match["metadata"]["blueprint_json"]
+            content = {"blueprint": blueprint_json}
+        else:
+            print("上下文管理员没有找到蓝图，返回默认的")
+            content = {
+                "blueprint": json.dumps(
+                    {"instruction": "Generate the content neutrally"}
+                )
+            }
+
+        return McpMessage(sender="Librarian", content=content)
