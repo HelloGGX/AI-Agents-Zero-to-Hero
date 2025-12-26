@@ -72,13 +72,19 @@ class LLMService:
         print(text, end="", flush=True)
 
     def chat_completion(
-        self, system_prompt: str, user_content: str, enable_thinking: bool = True
+        self,
+        system_prompt: str,
+        user_content: str,
+        enable_thinking: bool = True,
+        json_mode: bool = True,
     ) -> str:
         logger.info(f"正在调用 LLM... (最大重试次数: {self.config.max_retries})")
 
         for attempt in range(1, self.config.max_retries + 1):
             try:
-                return self._execute_call(system_prompt, user_content, enable_thinking)
+                return self._execute_call(
+                    system_prompt, user_content, enable_thinking, json_mode
+                )
             except (APIConnectionError, RateLimitError, APIError) as e:
                 logger.warning(f"尝试 {attempt}/{self.config.max_retries} 失败: {e}")
                 if attempt == self.config.max_retries:
@@ -90,10 +96,16 @@ class LLMService:
         return ""
 
     def _execute_call(
-        self, system_prompt: str, user_content: str, enable_thinking: bool
+        self,
+        system_prompt: str,
+        user_content: str,
+        enable_thinking: bool,
+        json_mode: bool,
     ) -> str:
+
         response = self.client.chat.completions.create(
             model=self.config.model_id,
+            response_format={"type": "json_object"} if json_mode else {"type": "text"},
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
@@ -395,6 +407,7 @@ def query_pinecone(query_text, namespace, top_k=1):
         return []
 
 
+# 从向量库NAMESPACE_CONTEXT中查找符合语义的蓝图手册
 class agent_context_librarian(BaseAgent):
     def process_task(self, message: McpMessage) -> McpMessage:
         print("上下文管理员激活")
@@ -422,3 +435,185 @@ class agent_context_librarian(BaseAgent):
             }
 
         return McpMessage(sender="Librarian", content=content)
+
+
+class agent_researcher(BaseAgent):
+    def process_task(self, message: McpMessage) -> McpMessage:
+        if isinstance(message.content, str):
+            data = json.loads(message.content)
+        else:
+            data = message.content
+        topic = data.get("topic_query")
+        results = query_pinecone(topic, os.getenv("NAMESPACE_KNOWLEDGE"), top_k=3)
+
+        if not results:
+            print("[Researcher] No relevant information found")
+            return McpMessage(sender="Researcher", content={"fact": "No data found"})
+
+        source_texts = [match["metadata"]["text"] for match in results]
+
+        system_prompt = """You are an expert research synthesis AI.Synthesize the provided source texts into a concise, bullet-pointed summary relevant to the user's topic. Focus strictly on the facts provided in the sources. Do not add outside information."""
+
+        user_prompt = f"Topic: {topic}\n\nSources:\n" + "\n\n--\n\n".join(source_texts)
+
+        findings = self.llm.chat_completion(system_prompt, user_prompt)
+
+        return McpMessage(sender="Researcher", content={"facts": findings})
+
+
+class agent_writer(BaseAgent):
+    def process_task(self, message: McpMessage) -> McpMessage:
+        if isinstance(message.content, str):
+            data = json.loads(message.content)
+        else:
+            data = message.content
+        facts = data.get("facts")
+        blueprint_json_string = data.get("blueprint")
+
+        # The Writer's System Prompt incorporates the dynamically retrieved blueprint
+        system_prompt = f"""You are an expert content generation AI.
+        Your task is to generate content based on the provided RESEARCH FINDINGS.
+        Crucially, you MUST structure, style, and constrain your output according to the rules defined in the SEMANTIC BLUEPRINT provided below.
+
+        --- SEMANTIC BLUEPRINT (JSON) ---
+        {blueprint_json_string}
+        --- END SEMANTIC BLUEPRINT ---
+
+        Adhere strictly to the blueprint's instructions, style guides, and goals. The blueprint defines HOW you write; the research defines WHAT you write about.
+        """
+
+        user_prompt = f"""
+        --- RESEARCH FINDINGS ---
+        {facts}
+        --- END RESEARCH FINDINGS ---
+
+        Generate the content now.
+        """
+        final_output = self.llm.chat_completion(system_prompt, user_prompt)
+
+        return McpMessage(sender="Writer", content={"output": final_output})
+
+
+class Orchestrator(BaseAgent):
+    def __init__(self, llm_service: LLMService, high_level_goal: str):
+        super().__init__(llm_service)
+        self.high_level_goal = high_level_goal
+
+    """
+    Manages the workflow of the Context-Aware MAS.
+    Analyzes the goal, retrieves context and facts, and coordinates generation.
+    """
+
+    def process_task(self, message: McpMessage) -> McpMessage:
+        print(f"=== [Orchestrator] Starting New Task ===")
+        print(f"Goal: {self.high_level_goal}")
+
+        # Step 0: Analyze Goal (Determine Intent and Topic)
+        # We use the LLM to separate the desired style (intent) from the subject matter (topic).
+        print("\n[Orchestrator] Analyzing Goal...")
+        analysis_system_prompt = """You are an expert goal analyst. Analyze the user's high-level goal and extract two components:
+            1. 'intent_query': A descriptive phrase summarizing the desired style, tone, or format, optimized for searching a context library (e.g., "suspenseful narrative blueprint", "objective technical explanation structure").
+            2. 'topic_query': A concise phrase summarizing the factual subject matter required (e.g., "Juno mission objectives and power", "Apollo 11 landing details").
+
+            Respond ONLY with a JSON object containing these two keys."""
+
+        analysis_result = self.llm.chat_completion(
+            analysis_system_prompt, self.high_level_goal, json_mode=True
+        )
+
+        try:
+            analysis = json.loads(analysis_result)
+            intent_query = analysis["intent_query"]
+            topic_query = analysis["topic_query"]
+        except (json.JSONDecodeError, KeyError):
+            print(
+                f"[Orchestrator] Error: Could not parse analysis JSON. Raw Analysis: {analysis_result}. Aborting."
+            )
+            return McpMessage(sender="Orchestrator", content={})
+
+        print(f"Orchestrator: Intent Query: '{intent_query}'")
+        print(f"Orchestrator: Topic Query: '{topic_query}'")
+
+        mcp_to_librarian = McpMessage(
+            sender="Orchestrator", content={"intent_query": intent_query}
+        )
+        config = AppConfig()
+        llm = LLMService(config)
+
+        agentContextLibrarian = agent_context_librarian(llm)
+        mcp_from_librarian = agentContextLibrarian.process_task(mcp_to_librarian)
+
+        # Ensure content is a dict before calling .get
+        content = mcp_from_librarian.content
+        if isinstance(content, str):
+            try:
+                content = json.loads(content)
+            except Exception:
+                content = {}
+        context_blueprint = content.get("blueprint")
+
+        if not context_blueprint:
+            return McpMessage(sender="Orchestrator", content={})
+
+        mcp_to_researcher = McpMessage(
+            sender="Orchestrator", content={"topic_query": topic_query}
+        )
+        agentResearcher = agent_researcher(llm)
+        mcp_from_researcher = agentResearcher.process_task(mcp_to_researcher)
+        content = mcp_from_researcher.content
+        if isinstance(content, str):
+            try:
+                content = json.loads(content)
+            except Exception:
+                content = {}
+        research_findings = content.get("facts")
+        if not research_findings:
+            return McpMessage(sender="Orchestrator", content={})
+
+        writer_task = {"blueprint": context_blueprint, "facts": research_findings}
+        mcp_to_writer = McpMessage(sender="Orchestrator", content=writer_task)
+        agentWriter = agent_writer(llm)
+        mcp_from_writer = agentWriter.process_task(mcp_to_writer)
+        content = mcp_from_writer.content
+        if isinstance(content, str):
+            try:
+                content = json.loads(content)
+            except Exception:
+                content = {}
+        final_result = content.get("output")
+
+        return McpMessage(sender="Orchestrator", content={"output": final_result})
+
+
+def main():
+    try:
+        config = AppConfig()
+        llm = LLMService(config)
+        orchestrator = Orchestrator(
+            llm,
+            high_level_goal="基于真实事实，创作一个关于朱诺号木星探测任务的悬疑故事。中文说明",
+        )
+
+        input_msg = McpMessage(sender="User", content="Mediterranean Diet")
+        print(f"任务启动: {input_msg.content}")
+
+        final_msg = orchestrator.process_task(input_msg)
+
+        print("\n" + "#" * 30)
+        print("最终结果：")
+        content = final_msg.content
+        if isinstance(content, str):
+            try:
+                content = json.loads(content)
+            except Exception:
+                content = {}
+        print(content.get("output"))
+        print("#" * 30)
+
+    except Exception as e:
+        logger.exception("程序发生致命错误")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
