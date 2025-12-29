@@ -216,8 +216,9 @@ class VectorDBService:
 
 
 class BaseAgent(ABC):
-    def __init__(self, llm_service: LLMService):
+    def __init__(self, llm_service, vector_db=None):
         self.llm = llm_service
+        self.vector_db = vector_db
 
     @abstractmethod
     def process_task(self, message: McpMessage) -> McpMessage:
@@ -499,7 +500,7 @@ class ExecutionTrace:
                 "planned_input": planned_input,
                 # Crucial for debugging: What exact context did the agent receive?
                 "resolved_context": resolved_input,
-                "output": mcp_output["content"],
+                "output": mcp_output.content,
             }
         )
 
@@ -545,7 +546,7 @@ def context_engine(goal):
 
     # 2. 数据注入 (实际生产中通常是单独的 Pipeline，这里为了演示保留)
     # Uncomment the line below to reset DB on run
-    setup_knowledge_base(config, vector_db, llm_service)
+    # setup_knowledge_base(config, vector_db, llm_service)
     try:
         capabilities = registry.get_capabilities_description()
         planner = Planner(llm_service)
@@ -750,7 +751,7 @@ def main():
 
         if result_1:
             print("\n******** FINAL OUTPUT 1 **********\n")
-            display(Markdown(result_1))
+            print(result_1)
             print("\n\n" + "=" * 50 + "\n\n")
             # Optional: Display the trace to see the engine's process
             # trace_1.display_trace()
