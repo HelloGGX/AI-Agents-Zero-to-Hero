@@ -1,4 +1,5 @@
 import logging
+import re
 import tiktoken
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 from openai import APIError  # Import specific error for better handling
@@ -135,3 +136,23 @@ def count_tokens(text, model="gpt-4"):
         # Fallback for models that might not be in the tiktoken registry
         encoding = tiktoken.get_encoding("cl100k_base")
     return len(encoding.encode(text))
+
+
+def helper_sanitize_input(text):
+    """
+    A simple sanitization function to detect and flag potential prompt injection
+    patterns.
+    Returns the text if clean, or raises a ValueError if a threat is detected.
+    """
+    injection_patterns = [
+        r"ignore previous instructions",
+        r"ignore all prior commands",
+        r"you are now in.*mode",
+        r"act as",
+        r"print your instructions",
+        r"sudo|apt-get|yum|pip install",
+    ]
+    for pattern in injection_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            raise ValueError(f"Input sanitization failed. Potential threat detected.")
+    return text

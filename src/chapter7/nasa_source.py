@@ -1,4 +1,5 @@
 import os
+import time
 from openai import OpenAI
 from pinecone import Pinecone
 from tenacity import retry, stop_after_attempt, wait_random_exponential
@@ -58,9 +59,16 @@ print(
 
 print(f"\nProcessing and uploading Context Library to namespace: {config.ns_knowledge}")
 
-batch_size = 100
+batch_size = 50
 total_vectors_uploaded = 0
-
+# stats = index.describe_index_stats()
+# if (
+#     config.ns_knowledge in stats.namespaces
+#     and stats.namespaces[config.ns_knowledge].vector_count > 0
+# ):
+#     print("开始清除")
+#     index.delete(delete_all=True, namespace=config.ns_knowledge)
+#     time.sleep(2)  # 简单等待删除生效
 for doc_name, doc_content in knowledge_base.items():
     knowledge_chunks = chunk_text(doc_content)
 
@@ -69,6 +77,7 @@ for doc_name, doc_content in knowledge_base.items():
     ):
         batch_texts = knowledge_chunks[i : i + batch_size]
         batch_embeddings = get_embeddings_batch(batch_texts)
+
         batch_vectors = []
         for j, embedding in enumerate(batch_embeddings):
             chunk_id = f"{doc_name}_chunk_{total_vectors_uploaded + j}"

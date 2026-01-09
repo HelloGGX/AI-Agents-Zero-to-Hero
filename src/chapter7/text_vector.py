@@ -1,4 +1,4 @@
-import os
+import re
 from openai import OpenAI
 from pinecone import Pinecone
 from tenacity import retry, stop_after_attempt, wait_random_exponential
@@ -24,3 +24,13 @@ def get_embeddings_batch(texts, model=config.embedding_model):
 
 
 query_embedding = get_embeddings_batch(["What is the Juno mission?"])[0]
+results = index.query(
+    vector=query_embedding,
+    top_k=1,
+    namespace=config.ns_knowledge,
+    include_metadata=True,
+)
+
+if results["matches"]:
+    top_match_metadata = results["matches"][0]["metadata"]
+    print(top_match_metadata)

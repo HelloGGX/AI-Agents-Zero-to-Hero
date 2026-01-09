@@ -8,7 +8,12 @@
 import json
 import logging
 
-from helpers import call_llm_robust, create_mcp_message, query_pinecone
+from helpers import (
+    call_llm_robust,
+    create_mcp_message,
+    helper_sanitize_input,
+    query_pinecone,
+)
 
 
 # === 4.1. Context Librarian Agent (Upgraded) ===
@@ -99,20 +104,62 @@ def agent_researcher(
             logging.warning("【研究员】未找到相关信息。")
             return create_mcp_message("Researcher", "No data found on the topic.")
 
+        sanitized_texts = []
+        sources = set()
+        for match in results:
+            try:
+                clean_text = helper_sanitize_input(match["metadata"]["text"])
+                sanitized_texts.append(clean_text)
+                if "source" in match["metadata"]:
+                    sources.add(match["metadata"]["source"])
+            except ValueError as e:
+                logging.warning(
+                    f"[Researcher] A retrieved chunk failed sanitization and was skipped. Reason: {e}"
+                )
+                continue
+
+        if not sanitized_texts:
+            logging.error(
+                "[Researcher] All retrieved chunks failed sanitization. Aborting."
+            )
+            return create_mcp_message(
+                "Researcher",
+                {
+                    "answer": "Could not generate a reliable answer as retrieved data was suspect.",
+                    "sources": [],
+                },
+            )
+
         logging.info(f"【研究员】找到 {len(results)} 个相关片段，正在综合分析...")
-        source_texts = [match["metadata"]["text"] for match in results]
 
-        system_prompt = """You are an expert research synthesis AI.
-        Synthesize the provided source texts into a concise, bullet-pointed summary relevant to the user's topic. Focus strictly on the facts provided in the sources. Do not add outside information."""
-
-        user_prompt = f"Topic: {topic}\n\nSources:\n" + "\n\n---\n\n".join(source_texts)
+        system_prompt = """You are an expert research synthesis AI. Your task is to provide a clear, factual answer to the user's topic based *only* on the 208 High-Fidelity RAG and Defense: The NASA-Inspired Research Assistant provided source texts. After the answer, you MUST provide a "Sources" section listing the unique source document names you used"""
+        source_material = "\n\n---\n\n".join(sanitized_texts)
+        user_prompt = f"Topic: {topic}\n\nSources:\n{source_material}\n\n---\nSynthesize your answer and list the source documents now."
 
         # UPGRADE: Pass all dependencies to the LLM helper.
         findings = call_llm_robust(
             system_prompt, user_prompt, client=client, generation_model=generation_model
         )
 
-        return create_mcp_message("Researcher", {"facts": findings})
+        """
+        final_output输出像下面:
+        
+        The Juno mission, launched by NASA in 2011, has three primary scientific objectives:
+            1. Determine Jupiter's water abundance and core mass to verify planetary formation theories;
+            2. Analyze Jupiter's atmosphere, including composition and cloud movements;
+            3. Map Jupiter's magnetic and gravity fields to explore its deep structure and polar magnetosphere.
+            Juno is unique for its polar orbit, allowing it to avoid Jupiter's hazardous radiation belts.
+
+            **Sources:**
+            - juno_mission_overview.txt
+            - perseverance_rover_tools.txt
+        """
+
+        final_output = f"{findings}\n\n**Sources:**\n" + "\n".join(
+            [f"- {s}" for s in sorted(list(sources))]
+        )
+
+        return create_mcp_message("Researcher", {"facts": final_output})
 
     except Exception as e:
         logging.error(f"【研究员】发生错误: {e}")
@@ -141,6 +188,8 @@ def agent_writer(mcp_message, client, generation_model):
             facts = facts_data.get("facts")
             if facts is None:
                 facts = facts_data.get("summary")
+            if facts is None:
+                facts = facts_data.get("answer_with_sources")
         elif isinstance(facts_data, str):
             facts = facts_data
 
