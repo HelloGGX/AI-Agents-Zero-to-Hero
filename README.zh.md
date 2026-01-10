@@ -1,4 +1,4 @@
-# AI Agents 路线图：从零基础到专业 🧠
+# AI Agents 路线图：从零基础到大师 🧠
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
 [![Focus](https://img.shields.io/badge/Focus-AI_Agents-green?style=for-the-badge)](./docs)

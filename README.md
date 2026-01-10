@@ -1,4 +1,4 @@
-# AI Agents Roadmap: From Zero to Pro 🧠
+# AI Agents Roadmap: From Zero to Hero 🧠
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
 [![Focus](https://img.shields.io/badge/Focus-AI_Agents-green?style=for-the-badge)](./docs)
