@@ -1,120 +1,110 @@
-# Context Engineering for Multi-Agent Systems 🧠
-### 从“调包侠”到“AI 架构师”：一个可推理、可规划、自适应系统的构建之路
+# AI Agents Roadmap: From Zero to Pro 🧠
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
-[![System Design](https://img.shields.io/badge/Skill-System_Design-orange?style=for-the-badge)](./src)
-[![Roadmap](https://img.shields.io/badge/Focus-Agent_Architecture-green?style=for-the-badge)](./src)
+[![Focus](https://img.shields.io/badge/Focus-AI_Agents-green?style=for-the-badge)](./docs)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey?style=for-the-badge)](./LICENSE)
+[![Stars](https://img.shields.io/github/stars/[Your-Username]/ai-agents-roadmap?style=for-the-badge)](https://github.com/[Your-Username]/ai-agents-roadmap/stargazers)
 
-> **"未来的 AI 工程师，不应只是 Prompt 的撰写者，而应是 Context（上下文）的工程师。"**
+> A comprehensive, hands-on roadmap for learning AI Agents from scratch, inspired by roadmap.sh. Build practical skills to land your first AI job.
 
----
+## Project Overview
 
-## 🛑 你是否也面临这些困境？
+This open-source repository is your structured guide to mastering AI Agents. Whether you're a complete beginner or an aspiring AI engineer without real-world experience, this project documents a step-by-step learning journey. It covers fundamentals to advanced topics, with code examples, tutorials, and projects to help you build a portfolio for job offers.
 
-- **陷入“Demo 陷阱”**：跟着教程写了很多 `client.chat.completions.create`，但一旦面对复杂业务逻辑（如多轮对话、工具调用、长期记忆），代码就乱成一团麻。
-- **面试造火箭，工作拧螺丝**：面试官问：“如何解决 Agent 的幻觉？如何设计多智能体协作机制？如何处理超长上下文？” 你发现光靠 LangChain 的文档根本回答不了。
-- **框架依赖症**：离开了 LangChain、AutoGPT 这样的重型框架，就不知道如何手写一个最基础的 ReAct 循环。
+Key focus: Turn theoretical knowledge into actionable skills. No more scattered resources—everything in one place for systematic learning.
 
-**如果是，那么这个仓库就是为你准备的。**
+![AI Agents Roadmap Diagram](./docs/roadmap-diagram.png)  
 
----
 
-## 💡 关于本项目 (Project Philosophy)
+## Who This Is For
 
-这不是一个简单的代码库，而是一份**“去黑盒化”的学习实录**。
+- **Beginners**: Zero foundational knowledge? Start here for a clear, progressive path.
+- **Job Seekers**: Gain practical experience to ace interviews and secure AI roles.
+- **Self-Learners**: Those willing to invest in premium resources for deeper, guided mastery.
 
-在这个项目中，我摒弃了所有复杂的第三方 Agent 框架，**从零开始（From Scratch）**，仅使用原生 Python 和 OpenAI API，手写了一个具备生产级设计模式的 Multi-Agent 系统。
+Free core content is open-source. For premium video courses, exclusive projects, and community support, check our [membership options](https://patreon.com/[Your-Username]) or [courses](https://teachable.com/[Your-Username]).
 
-**核心理念：Context Engineering (上下文工程)**
-我相信，Agent 的本质是对 Context 的管理。如何剪枝、压缩、注入、检索上下文，决定了一个智能体是“人工智障”还是“智能助手”。
+## Key Features
 
-### 🗺️ 你的进阶路线图
+- **Structured Roadmap**: Divided into phases mirroring roadmap.sh (e.g., LLM Fundamentals, Agent Architectures, Building Agents).
+- **Code Examples**: Python-based implementations for concepts like ReAct loops, tool invocation, and RAG integration.
+- **Practical Projects**: Build real agents (e.g., personal assistant, data analyzer) to showcase in portfolios.
+- **Resources**: Curated links, cheat sheets, and quizzes for self-assessment.
+- **Updates**: Regular additions based on 2026 AI trends (e.g., new models, ethics guidelines).
 
-本项目按照**系统演进**的逻辑，划分为多个章节，带你重走一遍架构师之路：
+## Learning Roadmap
 
-| 阶段 | 核心知识点 | 解决的问题 | 代码路径 |
-| :--- | :--- | :--- | :--- |
-| **Phase 1: 觉醒** | **Registry 模式 & 依赖注入** | 告别 `if-else` 堆砌，学会如何优雅地管理几十个不同的 Prompt 和 Tool。 | `src/chapter2` - `src/chapter3` |
-| **Phase 2: 核心** | **Engine 架构设计** | 手写调度引擎。理解“感知(Perception) -> 决策(Brain) -> 行动(Action)”的无限循环是如何跑起来的。 | `src/chapter4` - `src/chapter5` |
-| **Phase 3: 协作** | **SOP 与 动态路由** | 让 "Researcher" 和 "Writer" 两个智能体像人类同事一样，根据 SOP 自主协作交付成果。 | `src/chapter6` |
-| **Phase 4: 飞跃** | **RAG & Context Injection** | **[高阶]** 引入 NASA 真实文档数据，实现基于向量检索的动态上下文注入，解决长文档推理问题。 | `src/chapter7` |
+Follow this phased approach to build expertise:
 
-![System Architecture](./src/chapter7/流程图.png)
-*(本项目最终实现的 NASA 数据分析 Agent 架构图)*
+| Phase | Topics Covered | Resources |
+|-------|----------------|-----------|
+| **Phase 1: Prerequisites** | Backend basics, Git, REST APIs, LLM fundamentals (Transformers, Tokenization, Embeddings, RAG basics). | `./docs/prerequisites.md`, Code in `./src/prerequisites/` |
+| **Phase 2: AI Agents 101** | What are Agents/Tools? Agent Loop (Perception, Reason, Act, Observe). Prompt Engineering techniques. | `./docs/agents-101.md`, Examples in `./src/agents-101/` |
+| **Phase 3: Tools & Memory** | Tool definitions, examples (Web Search, Code Execution). Agent Memory (Short/Long-term, RAG, Summarization). | `./docs/tools-memory.md`, Implementations in `./src/tools-memory/` |
+| **Phase 4: Architectures** | ReAct, Chain of Thought, MCP, RAG Agents, DAG/Tree-of-Thought. | `./docs/architectures.md`, Advanced code in `./src/architectures/` |
+| **Phase 5: Building & Frameworks** | Manual builds (LLM APIs, Function Calling). Frameworks (LangChain, AutoGen, CrewAI). | `./docs/building.md`, Projects in `./src/projects/` |
+| **Phase 6: Evaluation & Security** | Testing metrics, Debugging tools (LangSmith). Ethics (Prompt Injection, Bias Guardrails). | `./docs/evaluation-security.md`, Tools in `./src/evaluation/` |
 
----
+For interactive quizzes and video walkthroughs, upgrade to premium access.
 
-## 🎯 为什么学习这个项目能帮你拿 Offer？
+## Getting Started
 
-现在的 AI 岗位，不再需要只会调 API 的人。企业需要的是能解决**稳定性**、**可控性**问题的工程师。
+### Prerequisites
+- Python 3.10+
+- Basic command-line knowledge
+- OpenAI API key (for examples)
 
-通过研读本项目代码，你将掌握：
-1.  **系统设计能力**：理解解耦、注册机制、事件驱动在 AI 系统中的应用。
-2.  **底层原理掌控**：清楚地知道 RAG 检索回来的文本是如何被组装进 Prompt 的，而不是把一切交给魔法。
-3.  **工程化思维**：从 Notebook 里的实验代码，进化到可维护、可扩展的工程代码。
+### Installation
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/[Your-Username]/ai-agents-roadmap.git
+   cd ai-agents-roadmap
+   ```
+2. Set up environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+3. Configure `.env`:
+   ```
+   OPENAI_API_KEY=your-key-here
+   ```
 
-> **"Talk is cheap. Show me the code."** —— 把这个仓库的架构图画在你的面试白板上，比背诵八股文有力得多。
-
----
-
-## ⚡ 快速开始 (Quick Start)
-
-### 1. 克隆与环境配置
+### Quick Example
+Run a basic agent demo:
 ```bash
-git clone [https://github.com/](https://github.com/)[Your-Username]/context-engineering-for-multi-agent-systems.git
-cd context-engineering-for-multi-agent-systems
-
-# 推荐使用 Python 3.10+
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-
+python src/agents-101/simple-agent.py
 ```
+This demonstrates a ReAct loop for a simple task.
 
-### 2. 配置密钥
+Explore `./src/projects/` for full builds.
 
-创建 `.env` 文件：
+## Contributing
 
-```env
-OPENAI_API_KEY=sk-your-api-key-here
+We welcome contributions to improve the roadmap! 
+- Fork and create a PR with enhancements (e.g., new examples, fixes).
+- Follow PEP8 style; test with `pytest`.
+- See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
-```
+## Community & Support
 
-### 3. 运行最终章实战 (NASA RAG Agent)
+- **Discussions**: Join [GitHub Discussions](https://github.com/[Your-Username]/ai-agents-roadmap/discussions) for questions.
+- **Premium Community**: Access Q&A, live sessions via [Patreon](https://patreon.com/[Your-Username]).
+- **Contact**: Gavin  
+  - X/Twitter: [@gavincoding](https://x.com/gavincoding?s=21)
+  - Email: gavin_cat@outlook.com
 
-体验完全体的 Multi-Agent 系统，让 AI 读取火星探测器手册并回答问题：
+## Related Resources
 
-```bash
-python src/chapter7/execute.py
+- Original inspiration: [roadmap.sh AI Agents](https://roadmap.sh/ai-agents)
+- Frameworks: [LangChain](https://github.com/langchain-ai/langchain), [CrewAI](https://github.com/joaomdmoura/crewAI)
+- Other Roadmaps: AI Engineer, MLOps from roadmap.sh
 
-```
+## License
+
+MIT License. See [LICENSE](./LICENSE).
 
 ---
 
-## 🤝 关于作者与“公开构建”
-
-我是 **Gavin**。我和你一样，也是从迷茫的 API 调用者开始，一步步摸索 Agent 系统的真谛。
-
-我建立这个仓库的初衷，是**记录我建立 AI 知识体系的全过程**。每一个 Commit，都代表了一次认知的迭代。
-
-如果你也想：
-
-* 系统化构建 AI Agent 知识体系
-* 围观一个普通开发者如何通过开源项目打造影响力
-* 获取关于**技术转型**、**简历优化**的独家建议
-
-欢迎关注我的更新，或通过以下方式找到我：
-
-* **Twitter/X**: [@你的账号](https://www.google.com/search?q=%E9%93%BE%E6%8E%A5)
-* **Blog/公众号**: [你的博客名](https://www.google.com/search?q=%E9%93%BE%E6%8E%A5)
-* **Email**: [你的邮箱]
-
----
-
-## 🌟 给我一个 Star？
-
-如果这个项目的代码或文档让你对 Agent 开发有了新的理解，请点击右上角的 ⭐️ **Star**。
-这不仅是对我的鼓励，更是你**开始认真对待 AI 工程化**的证明。
-
-Let's build the future, one context at a time. 🚀
+Star ⭐ this repo if it helps your journey. For accelerated learning with premium content, explore our [courses and membership](https://teachable.com/[Your-Username]). Let's democratize AI Agents education! 🚀
