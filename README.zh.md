@@ -1,5 +1,7 @@
 # AI Agents 路线图：从零基础到大师 🧠
 
+![AI Agents logo](./docs/logo.png)  
+
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
 [![Focus](https://img.shields.io/badge/Focus-AI_Agents-green?style=for-the-badge)](./docs)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey?style=for-the-badge)](./LICENSE)
