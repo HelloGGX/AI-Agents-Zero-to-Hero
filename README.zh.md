@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
 [![Focus](https://img.shields.io/badge/Focus-AI_Agents-green?style=for-the-badge)](./docs)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey?style=for-the-badge)](./LICENSE)
-[![Stars](https://img.shields.io/github/stars/[Your-Username]/ai-agents-roadmap?style=for-the-badge)](https://github.com/[Your-Username]/ai-agents-roadmap/stargazers)
+[![Stars](https://img.shields.io/github/stars/HelloGGX/AI-Agents-Zero-to-Hero?style=for-the-badge)](https://github.com/HelloGGX/AI-Agents-Zero-to-Hero/stargazers)
 
 > 一个全面的、实践导向的AI Agents学习路线图，从零基础起步，受roadmap.sh启发。构建实用技能，帮助你获得第一份AI工作。
 
@@ -65,7 +65,7 @@
 ### 安装
 1. 克隆仓库：
    ```bash
-   git clone https://github.com/[Your-Username]/ai-agents-roadmap.git
+   git clone https://github.com/HelloGGX/AI-Agents-Zero-to-Hero
    cd ai-agents-roadmap
    ```
 2. 设置环境：
